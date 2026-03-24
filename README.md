@@ -19,7 +19,7 @@ Add the following line to any C-based script to gain access to the parsing funct
 Then you can use `get_achievement(char *achievement, size_t len)` to get the whole achievement parsed.   
 It returns an object of type `struct ACHIEVEMENT *`   
 
-#### Parsing Structure
+### Parsing Structure
    
 - `NUMERAL` is a hand side of any comparison or operation, it has a type, a size, and a value.   
 Since RAIntegration is a 32-bit DLL, the internal accumulator is 32-bit, so a numeral's value cannot go beyond that.   
@@ -50,7 +50,8 @@ struct CONDITION
 <br>
 
 - `GROUP` represents a set of `CONDITION`. Each achievement must have a Core group (represented here by a `GROUP` where `GROUP.id == 0`) and an arbitrary number of Alt Groups.
->[!NOTE] Any achievement is unlocked when every condition in its Core Group AND in at least one Alt Group is true   
+>[!NOTE]
+> Any achievement is unlocked when every condition in its Core Group AND in at least one Alt Group is true   
 ```c
 struct GROUP
 {
@@ -77,7 +78,8 @@ struct ACHIEVEMENT
 <br>
 
 - `LEADERBOARD` represents an array of 4 `ACHIEVEMENT` called respectively `START`, `CANCEL`, `SUBMIT` and `VALUE`
->[!NOTE] Each of these aren't technically achievements, but they can be represented as is
+>[!NOTE]
+> Each of these aren't technically achievements, but they can be represented as is
 > when `START` is true, the leaderboard start a new entry
 > when `CANCEL` is true, the leaderboard cancel any on going entries
 > when `SUBMIT` is true, the leaderboard submit the entry to [retroachievements](https://retroachievements.org)

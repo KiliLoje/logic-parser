@@ -1,10 +1,10 @@
 # Logic Parser for RetroAchievement
----
+
 [RetroAchievement](https://retroachievements.org/) implements its achievement system through [RAIntegration](https://github.com/RetroAchievements/RAIntegration)   
 It uses a string encoding to store the logic for an achievement.   
 I highly recommend that you check the [RetroAchievement Dev Docs](https://docs.retroachievements.org/developer-docs/) before using this parser.   
 
----
+
 ## How to Use
    
 - `main.c` is only used for printing logic as readable data to the terminal. Unless that's what you want to do, do not add this file your project.   
@@ -67,6 +67,6 @@ struct ACHIEVEMENT
   char *description;
 
   size_t group_count;
-  struct GROUP *groups;
+  struct GROUP *groups[];
 }
 ```

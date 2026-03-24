@@ -79,11 +79,11 @@ struct ACHIEVEMENT
 
 - `LEADERBOARD` represents an array of 4 `ACHIEVEMENT` called respectively `START`, `CANCEL`, `SUBMIT` and `VALUE`
 >[!NOTE]
-> Each of these aren't technically achievements, but they can be represented as is
-> when `START` is true, the leaderboard start a new entry
-> when `CANCEL` is true, the leaderboard cancel any on going entries
-> when `SUBMIT` is true, the leaderboard submit the entry to [retroachievements](https://retroachievements.org)
-> `VALUE` is the part that require the format. It doesn't act like a regular achievement, as it isn't true or false. It is just measuring a value.
+> Each of these aren't technically achievements, but they can be represented as is   
+> when `START` is true, the leaderboard start a new entry   
+> when `CANCEL` is true, the leaderboard cancel any on going entries   
+> when `SUBMIT` is true, the leaderboard submit the entry to [retroachievements](https://retroachievements.org)   
+> `VALUE` is the part that require the format. It doesn't act like a regular achievement, as it isn't true or false. It is just measuring a value.   
 ```c
 struct LEADERBOARD
 {

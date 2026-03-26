@@ -369,14 +369,14 @@ struct GROUP *get_group(char *group, size_t len)
   output->condition_count = max_condition;
   return output;
 }
-
-struct ACHIEVEMENT *get_achievement(char *achievement, size_t len)
+// CORRECTION HERE: Allocating ACHIEVEMENT_LOGIC and not ACHIEVEMENT
+struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
 {
   size_t max_group = 1;
   for (int i = 1; i < len; i ++)
     if (achievement[i] == group_separator && achievement[i - 1] != 'x') max_group ++;
 
-  struct ACHIEVEMENT *output = malloc(sizeof(struct ACHIEVEMENT) + max_group * sizeof(struct GROUP **));
+  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC) + max_group * sizeof(struct GROUP *));
 
   int current_id = 0;
   int last_separator_index = 0;

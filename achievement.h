@@ -98,6 +98,9 @@ struct CONDITION
   Operator op;
   int hit_target;
 
+  struct CONDITION *next;
+  struct CONDITION *prev;
+
   struct NUMERAL lhs;
   struct NUMERAL rhs;
 };
@@ -105,14 +108,18 @@ struct CONDITION
 struct GROUP
 {
   int id;
-  size_t condition_count;
-  struct CONDITION *conditions[];
+
+  struct GROUP *next;
+  struct GROUP *prev;
+
+  struct CONDITION *condition_head;
+  struct CONDITION *condition_tail;
 };
 
 struct ACHIEVEMENT_LOGIC
 {
-  size_t group_count;
-  struct GROUP *groups[];
+  struct GROUP *group_head;
+  struct GROUP *group_tail;
 };
 
 typedef enum
@@ -130,6 +137,9 @@ struct ACHIEVEMENT
   char *description;
   int points;
   Achievement_type type;
+
+  struct ACHIEVEMENT *next;
+  struct ACHIEVEMENT *prev;
 
   struct ACHIEVEMENT_LOGIC *logic;
 };
@@ -160,6 +170,9 @@ struct LEADERBOARD
   Format format;
   int lower_is_better;
 
+  struct LEADERBOARD *next;
+  struct LEADERBOARD *prev;
+
   struct ACHIEVEMENT_LOGIC *start;
   struct ACHIEVEMENT_LOGIC *cancel;
   struct ACHIEVEMENT_LOGIC *submit;
@@ -176,10 +189,11 @@ struct ACHIEVEMENT_SET
 {
   Set_type type;
 
-  size_t achievement_count;
-  struct ACHIEVEMENT **achievements;
-  size_t leaderboard_count;
-  struct LEADERBOARD **leaderboards;
+  struct ACHIEVEMENT *achievement_head;
+  struct ACHIEVEMENT *achievement_tail;
+
+  struct LEADERBOARD *leaderboard_head;
+  struct LEADERBOARD *leaderboard_tail;
 };
 
 struct GAME

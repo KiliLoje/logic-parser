@@ -81,17 +81,19 @@ int encode_condition(char *buffer, size_t max_size, struct CONDITION *cond) {
 
 int encode_group(char *buffer, size_t max_size, struct GROUP *group) {
     int offset = 0;
-    for (size_t i = 0; i < group->condition_count; i++) {
-        if (i > 0) {
+    struct CONDITION *head = group->condition_head;
+    while (head) {
+        if (head->prev != NULL) {
             offset += snprintf(buffer + offset, max_size - offset, "%c", condition_separator);
         }
-        offset += encode_condition(buffer + offset, max_size - offset, group->conditions[i]);
+        offset += encode_condition(buffer + offset, max_size - offset, head);
+        head = head->next;
     }
     return offset;
 }
 
 char* encode_logic(struct ACHIEVEMENT_LOGIC *logic) {
-    if (!logic || logic->group_count == 0) return NULL;
+    if (!logic || logic->group_head == NULL) return NULL;
 
     // Allocate 4KB by default (sufficient for the vast majority of achievements)
     size_t buf_size = 4096;
@@ -101,12 +103,14 @@ char* encode_logic(struct ACHIEVEMENT_LOGIC *logic) {
     buffer[0] = '\0';
     int offset = 0;
 
-    for (size_t i = 0; i < logic->group_count; i++) {
-        if (i > 0) {
+    struct GROUP *head = logic->group_head;
+    while (head) {
+        if (head->prev != NULL) {
             // Separate Alternate Groups using 'S'
             offset += snprintf(buffer + offset, buf_size - offset, "%c", group_separator);
         }
-        offset += encode_group(buffer + offset, buf_size - offset, logic->groups[i]);
+        offset += encode_group(buffer + offset, buf_size - offset, head);
+        head = head->next;
     }
 
     return buffer;

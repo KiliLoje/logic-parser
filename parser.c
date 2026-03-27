@@ -337,14 +337,14 @@ struct CONDITION *get_condition(char *condition, size_t len)
 
 struct GROUP *get_group(char *group, size_t len)
 {
-  size_t max_condition = 1;
-  for (int i = 0; i < len; i ++)
-    if (group[i] == condition_separator) max_condition ++;
+  struct GROUP *output = malloc(sizeof(struct GROUP));
 
-  struct GROUP *output = malloc(sizeof(struct GROUP) + max_condition * sizeof(struct CONDITION *));
+  struct CONDITION *head = NULL;
+  struct CONDITION *last = NULL;
 
   int current_id = 0;
   int last_separator_index = 0;
+
   for (int i=0; i < len; i ++)
   {
     if (group[i] != condition_separator && i != len - 1) continue;
@@ -358,33 +358,44 @@ struct GROUP *get_group(char *group, size_t len)
     memcpy(condition_str, group + last_separator_index, condition_len);
     condition_str[condition_len] = '\0';
 
-    struct CONDITION *condition = get_condition(condition_str, condition_len);
+    struct CONDITION *new_condition = get_condition(condition_str, condition_len);
+
     free(condition_str);
 
-    condition->id = current_id + 1; // lines ID are 1 indexed to stay consistent with RAInt
-    output->conditions[current_id] = condition;
-    current_id ++;
+    new_condition->id = current_id + 1; // lines ID are 1 indexed to stay consistent with RAInt
+    new_condition->prev = last;
+    new_condition->next = NULL;
 
+    if (last)
+      last->next = new_condition;
+    else
+      head = new_condition;
+
+    last = new_condition;
+
+    current_id ++;
     last_separator_index = i + 1;
   }
 
-  output->condition_count = max_condition;
+  output->condition_head = head;
+  output->condition_tail = last;
+
   return output;
 }
 
-struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
+struct ACHIEVEMENT_LOGIC *get_achievement_logic(char *achievement, size_t len)
 {
-  size_t max_group = 1;
-  for (int i = 1; i < len; i ++)
-    if (achievement[i] == group_separator && achievement[i - 1] != 'x') max_group ++;
+  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC));
 
-  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC) + max_group * sizeof(struct GROUP *));
+  struct GROUP *head = NULL;
+  struct GROUP *last = NULL;
 
   int current_id = 0;
   int last_separator_index = 0;
+
   for (int i = 1; i < len; i ++)
   {
-    if (achievement[i] != group_separator && i < len - 1) continue;
+    if (achievement[i] != group_separator && i != len - 1) continue;
     if (achievement[i - 1] == 'x') continue; // 'S' is also a size marker for Bit6
 
     size_t group_len = i - last_separator_index;
@@ -396,18 +407,29 @@ struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
     memcpy(group_str, achievement + last_separator_index, group_len);
     group_str[group_len] = '\0';
 
-    struct GROUP *group = get_group(group_str, group_len);
+    struct GROUP *new_group = get_group(group_str, group_len);
+
     free(group_str);
 
-    group->id = current_id;
+    new_group->id = current_id;
+    new_group->prev = last;
+    new_group->next = NULL;
 
-    output->groups[current_id] = group;
+    if (last)
+      last->next = new_group;
+    else
+      head = new_group;
+
+    last = new_group;
+
     current_id++;
 
     last_separator_index = i + 1;
   }
 
-  output->group_count = max_group;
+  output->group_head = head;
+  output->group_tail = last;
+
   return output;
 }
 
@@ -474,10 +496,10 @@ struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
   memcpy(value_str, leaderboard + value_index, value_len);
   value_str[value_len] = '\0';
 
-  output->start = get_achievement(start_str, start_len);
-  output->cancel = get_achievement(cancel_str, cancel_len);
-  output->submit = get_achievement(submit_str, submit_len);
-  output->value = get_achievement(value_str, value_len);
+  output->start = get_achievement_logic(start_str, start_len);
+  output->cancel = get_achievement_logic(cancel_str, cancel_len);
+  output->submit = get_achievement_logic(submit_str, submit_len);
+  output->value = get_achievement_logic(value_str, value_len);
 
   free(start_str);
   free(cancel_str);
@@ -511,7 +533,7 @@ struct ACHIEVEMENT *get_achievement_from_json(const cJSON *json_achievement, int
   }
 
   struct ACHIEVEMENT *achievement = malloc(sizeof(struct ACHIEVEMENT));
-  achievement->logic = get_achievement(logic->valuestring, strlen(logic->valuestring));
+  achievement->logic = get_achievement_logic(logic->valuestring, strlen(logic->valuestring));
   achievement->id = id->valueint;
 
   achievement->title = malloc(strlen(title->valuestring) + 1);
@@ -572,22 +594,20 @@ struct LEADERBOARD *get_leaderboard_from_json(const cJSON *json_leaderboard, int
 
   leaderboard->lower_is_better = cJSON_IsTrue(lower_is_better);
  
-  const char *format_str = format->valuestring;
-
-  if (strcmp(format_str, "SCORE") == 0) leaderboard->format = FORMAT_SCORE;
-  else if (strcmp(format_str, "TIME") == 0) leaderboard->format = FORMAT_TIME_FRAMES;
-  else if (strcmp(format_str, "MILLISECS") == 0) leaderboard->format = FORMAT_TIME_CENTISECONDS;
-  else if (strcmp(format_str, "TIMESECS") == 0) leaderboard->format = FORMAT_TIME_SECONDS;
-  else if (strcmp(format_str, "MINUTES") == 0) leaderboard->format = FORMAT_TIME_MINUTES;
-  else if (strcmp(format_str, "SECS_AS_MINS") == 0) leaderboard->format = FORMAT_TIME_SECONDS_AS_MINUTES;
-  else if (strcmp(format_str, "VALUE") == 0) leaderboard->format = FORMAT_VALUE;
-  else if (strcmp(format_str, "UNSIGNED") == 0) leaderboard->format = FORMAT_VALUE_UNSIGNED;
-  else if (strcmp(format_str, "TENS") == 0) leaderboard->format = FORMAT_VALUE_TENS;
-  else if (strcmp(format_str, "HUNDREDS") == 0) leaderboard->format = FORMAT_VALUE_HUNDREDS;
-  else if (strcmp(format_str, "THOUSANDS") == 0) leaderboard->format = FORMAT_VALUE_THOUSANDS;
-  else if (strcmp(format_str, "FIXED1") == 0) leaderboard->format = FORMAT_VALUE_FIXED1;
-  else if (strcmp(format_str, "FIXED2") == 0) leaderboard->format = FORMAT_VALUE_FIXED2;
-  else if (strcmp(format_str, "FIXED3") == 0) leaderboard->format = FORMAT_VALUE_FIXED3;
+  if (strcmp(format->valuestring, "SCORE") == 0) leaderboard->format = FORMAT_SCORE;
+  else if (strcmp(format->valuestring, "TIME") == 0) leaderboard->format = FORMAT_TIME_FRAMES;
+  else if (strcmp(format->valuestring, "MILLISECS") == 0) leaderboard->format = FORMAT_TIME_CENTISECONDS;
+  else if (strcmp(format->valuestring, "TIMESECS") == 0) leaderboard->format = FORMAT_TIME_SECONDS;
+  else if (strcmp(format->valuestring, "MINUTES") == 0) leaderboard->format = FORMAT_TIME_MINUTES;
+  else if (strcmp(format->valuestring, "SECS_AS_MINS") == 0) leaderboard->format = FORMAT_TIME_SECONDS_AS_MINUTES;
+  else if (strcmp(format->valuestring, "VALUE") == 0) leaderboard->format = FORMAT_VALUE;
+  else if (strcmp(format->valuestring, "UNSIGNED") == 0) leaderboard->format = FORMAT_VALUE_UNSIGNED;
+  else if (strcmp(format->valuestring, "TENS") == 0) leaderboard->format = FORMAT_VALUE_TENS;
+  else if (strcmp(format->valuestring, "HUNDREDS") == 0) leaderboard->format = FORMAT_VALUE_HUNDREDS;
+  else if (strcmp(format->valuestring, "THOUSANDS") == 0) leaderboard->format = FORMAT_VALUE_THOUSANDS;
+  else if (strcmp(format->valuestring, "FIXED1") == 0) leaderboard->format = FORMAT_VALUE_FIXED1;
+  else if (strcmp(format->valuestring, "FIXED2") == 0) leaderboard->format = FORMAT_VALUE_FIXED2;
+  else if (strcmp(format->valuestring, "FIXED3") == 0) leaderboard->format = FORMAT_VALUE_FIXED3;
   else
   {
     free(leaderboard);
@@ -609,12 +629,12 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
   type = cJSON_GetObjectItemCaseSensitive(achievement_set, "Type");
 
   json_achievements = cJSON_GetObjectItemCaseSensitive(achievement_set, "Achievements");
-  int achievement_count = cJSON_GetArraySize(json_achievements);
-  struct ACHIEVEMENT **achievements = malloc(sizeof(struct ACHIEVEMENT *) * achievement_count);
+  struct ACHIEVEMENT *achievement_head = NULL;
+  struct ACHIEVEMENT *achievement_last = NULL;
 
   json_leaderboards = cJSON_GetObjectItemCaseSensitive(achievement_set, "Leaderboards");
-  int leaderboard_count = cJSON_GetArraySize(json_leaderboards);
-  struct LEADERBOARD **leaderboards = malloc(sizeof(struct LEADERBOARD *) * leaderboard_count);
+  struct LEADERBOARD *leaderboard_head = NULL;
+  struct LEADERBOARD *leaderboard_last = NULL;
 
   if
   (
@@ -629,26 +649,36 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
 
   struct ACHIEVEMENT_SET *output = malloc(sizeof(struct ACHIEVEMENT_SET));
 
-  int index = 0;
   cJSON_ArrayForEach(json_achievement, json_achievements)
   {
-    achievements[index] = get_achievement_from_json(json_achievement, status);
-    if (achievements[index] == NULL)
+    struct ACHIEVEMENT *new_achievement = get_achievement_from_json(json_achievement, status);
+    if (new_achievement == NULL)
     {
       return NULL;
     }
-    index ++;
+
+    if (achievement_last)
+      achievement_last->next = new_achievement;
+    else
+      achievement_head = new_achievement;
+
+    achievement_last = new_achievement;
   }
 
-  index = 0;
   cJSON_ArrayForEach(json_leaderboard, json_leaderboards)
   {
-    leaderboards[index] = get_leaderboard_from_json(json_leaderboard, status);
-    if (leaderboards[index] == NULL)
+    struct LEADERBOARD *new_leaderboard = get_leaderboard_from_json(json_leaderboard, status);
+    if (new_leaderboard == NULL)
     {
       return NULL;
     }
-    index ++;
+
+    if (leaderboard_last)
+      leaderboard_last->next = new_leaderboard;
+    else
+      leaderboard_head = new_leaderboard;
+
+    leaderboard_last = new_leaderboard;
   }
 
   if (strcmp(type->valuestring, "core") == 0) output->type = SET_CORE;
@@ -659,11 +689,11 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
     return NULL;
   }
 
-  output->achievement_count = achievement_count;
-  output->achievements = achievements;
+  output->achievement_head = achievement_head;
+  output->achievement_tail = achievement_last;
 
-  output->leaderboard_count = leaderboard_count;
-  output->leaderboards = leaderboards;
+  output->leaderboard_head = leaderboard_head;
+  output->leaderboard_tail = leaderboard_last;
 
   return output;
 }
@@ -721,7 +751,6 @@ struct GAME *get_game_from_json(char *path)
     status = WRONG_JSON_OBJECT_TYPE;
     goto end;
   }
-  printf("%d| %s   nb of sets : %d\n", gameID->valueint, title->valuestring, cJSON_GetArraySize(achievement_sets));
 
   int set_count = cJSON_GetArraySize(achievement_sets);
   struct GAME *output = malloc(sizeof(struct GAME) + sizeof(struct ACHIEVEMENT_SET *) * set_count);
@@ -745,6 +774,5 @@ end:
   // TODO: something with status code for error diagnostic
   cJSON_Delete(json);
   if (status != SUCCESS) return NULL;
-  printf("Game parsed successfully\n");
   return output;
 }

@@ -378,7 +378,7 @@ struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
   for (int i = 1; i < len; i ++)
     if (achievement[i] == group_separator && achievement[i - 1] != 'x') max_group ++;
 
-  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC) + sizeof(struct GROUP *) * max_group);
+  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC) + max_group * sizeof(struct GROUP *));
 
   int current_id = 0;
   int last_separator_index = 0;

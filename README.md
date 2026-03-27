@@ -7,22 +7,33 @@ I highly recommend that you check the [RetroAchievement Dev Docs](https://docs.r
 
 ## How to Use
    
-- `main.c` is only used for printing logic as readable data to the terminal. Unless that's what you want to do, do not add this file your project.<br>
 
 - `achievement.h` is where the achievement `structs` and `enums` are stored. It is included by `parser.h` so you have to download it.
-- `parser.h` and `parser.c` is where the main logic for the parsing resides.<br>
+- `RA_Consoles.h` is a header file taken directly from [RAInterface](https://github.com/RetroAchievements/RAInterface) and hold an `enum` for console IDs.
+- `parser.h` and `parser.c` is where the main logic for the parsing resides.
+- `encoder.h` and `encoder.c` is what you'll want to refer to if you plan on encoding the parsed logic back to a string.<br>
 
 Add the following line to any C-based script to gain access to the parsing functions.
 ```c
 #include "path/to/achievement.h"
 ```
-Then you can use `get_achievement(char *achievement, size_t len)` to get the whole achievement parsed.   
-It returns an object of type `struct ACHIEVEMENT *`   
+Then you have multiple possibilities.
+- `get_achievement_logic(char *logic, size_t len)` will return an object of type `struct ACHIEVEMENT_LOGIC *` which hold a list of `struct GROUP`.
+- `get_leaderboard(char *logic, size_t len)` will return an object of type `struct LEADERBOARD *` which hold 4 objects of type `struct ACHIEVEMENT_LOGIC *` :
+  - `leaderboard->start`
+  - `leaderboard->cancel`
+  - `leaderboard->submit`
+  - `leaderboard->value`
+- `get_game_from_json(char *path)` will return an object of type `struct GAME *` which holds a list of `struct ACHIEVEMENT` and a list of `struct LEADERBOARD`.
 
 ### Parsing Structure
+>[!NOTE]
+> Everything here is mapped as doubly linked lists. Inserting or appending structures will always be simpler this way. Each listed structures hold two pointers `next` and `prev` which will allow you to navigate through the list. Furthermore, each structures which holds a list as a member, will have two pointer members `head` and `tail`
    
 - `NUMERAL` is a hand side of any comparison or operation, it has a type, a size, and a value.   
 Since RAIntegration is a 32-bit DLL, the internal accumulator is 32-bit, so a numeral's value cannot go beyond that.   
+>[!NOTE]
+> If your numeral's type is `TYPE_FLOAT` or his size is one of the 6 floats size, you'll need to copy `value` into a float.
 ```c
 struct NUMERAL
 {
@@ -40,8 +51,11 @@ struct CONDITION
 {
   int id;
   Flag flag;
-  Operator op; // either an operator or a comparator, such as '=' or '+'
+  Operator op; // either an operator or a comparator, such as '+' or '='
   int hit_target
+
+  struct CONDITION *next;
+  struct CONDITION *prev;
 
   struct NUMERAL lhs;
   struct NUMERAL rhs;
@@ -56,23 +70,39 @@ struct CONDITION
 struct GROUP
 {
   int id;
-  size_t condition_count;
-  struct CONDITION *conditions[];
+
+  struct GROUP *next;
+  struct GROUP *prev;
+
+  struct CONDITION *condition_head;
+  struct CONDITION *condition_tail;
 };
 ```
 <br>
 
-- `ACHIEVEMENT` represents a set of `GROUP`. Each of them has an id, title, and description which are currently not supported.   
+- `ACHIEVEMENT_LOGIC` represents a set of `GROUP` and that is all. It does not hold any meta data.
+```c
+struct ACHIEVEMENT_LOGIC
+{
+  struct GROUP *group_head;
+  struct GROUP *group_tail;
+}
+```
+
+- `ACHIEVEMENT` adds some meta data to an `ACHIEVEMENT_LOGIC` such as an id, title or description which are parsed from a JSON.
 ```c
 struct ACHIEVEMENT
 {
   int id;
   char *title;
   char *description;
+  int points;
+  Achievement_type type;
 
-  size_t group_count;
-<<<<<<< HEAD
-  struct GROUP *groups;
+  struct ACHIEVEMENT *next;
+  struct ACHIEVEMENT *prev;
+
+  struct ACHIEVEMENT_LOGIC *logic;
 };
 ```
 <br>
@@ -93,9 +123,44 @@ struct LEADERBOARD
   Format format;
   int lower_is_better;
 
-  struct ACHIEVEMENT *start;
-  struct ACHIEVEMENT *cancel;
-  struct ACHIEVEMENT *submit;
-  struct ACHIEVEMENT *value;
+  struct LEADERBOARD *next;
+  struct LEADERBOARD *prev;
+
+  struct ACHIEVEMENT_LOGIC *start;
+  struct ACHIEVEMENT_LOGIC *cancel;
+  struct ACHIEVEMENT_LOGIC *submit;
+  struct ACHIEVEMENT_LOGIC *value;
+};
+```
+<br>
+
+- `ACHIEVEMENT_SET` represents a set of achievements which is a list of achievement and a list of leaderboard. The type is either "core" or "subset".
+```c
+struct ACHIEVEMENT_SET
+{
+  Set_type type;
+
+  struct ACHIEVEMENT *achievement_head;
+  struct ACHIEVEMENT *achievement_tail;
+
+  struct LEADERBOARD *leaderboard_head;
+  struct LEADERBOARD *leaderboard_tail;
+};
+```
+<br>
+
+- Finally, `GAME` is the highest structure possible, it holds all of a game's metadata and all of his sets.
+```c
+struct GAME
+{
+  int id;
+  char *title;
+  ConsoleID consoleID;
+
+  int hub_count;
+  int *hubs_id;
+
+  size_t set_count;
+  struct ACHIEVEMENT_SET *sets[];
 };
 ```

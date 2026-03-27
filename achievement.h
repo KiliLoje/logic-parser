@@ -125,7 +125,7 @@ typedef enum
 
 struct ACHIEVEMENT
 {
-  double id;
+  int id;
   char *title;
   char *description;
   int points;
@@ -154,7 +154,7 @@ typedef enum
 
 struct LEADERBOARD
 {
-  double id;
+  int id;
   char *title;
   char *description;
   Format format;
@@ -166,19 +166,33 @@ struct LEADERBOARD
   struct ACHIEVEMENT_LOGIC *value;
 };
 
+typedef enum
+{
+  SET_CORE,
+  SET_SUBSET
+} Set_type;
+
 struct ACHIEVEMENT_SET
 {
-  double id;
-  char *title;
-  ConsoleID consoleID;
-
-  size_t hub_count;
-  int **hub_ids;
+  Set_type type;
 
   size_t achievement_count;
   struct ACHIEVEMENT **achievements;
   size_t leaderboard_count;
   struct LEADERBOARD **leaderboards;
+};
+
+struct GAME
+{
+  int id;
+  char *title;
+  ConsoleID consoleID;
+
+  int hub_count;
+  int *hubs_id;
+
+  size_t set_count;
+  struct ACHIEVEMENT_SET *sets[];
 };
 
 #endif // !ACHIEVEMENT_H

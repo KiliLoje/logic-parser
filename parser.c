@@ -1,10 +1,12 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
 #include "parser.h"
 #include "achievement.h"
+#include "cJSON.h"
 
 const char condition_separator = '_';
 const char group_separator = 'S';
@@ -369,7 +371,7 @@ struct GROUP *get_group(char *group, size_t len)
   output->condition_count = max_condition;
   return output;
 }
-// CORRECTION HERE: Allocating ACHIEVEMENT_LOGIC and not ACHIEVEMENT
+
 struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
 {
   size_t max_group = 1;
@@ -382,10 +384,10 @@ struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
   int last_separator_index = 0;
   for (int i = 1; i < len; i ++)
   {
-    if (achievement[i] != group_separator && i != len - 1) continue;
+    if (achievement[i] != group_separator && i < len - 1) continue;
     if (achievement[i - 1] == 'x') continue; // 'S' is also a size marker for Bit6
 
-    int group_len = i - last_separator_index;
+    size_t group_len = i - last_separator_index;
 
     if (achievement[i] != group_separator && i == len - 1) group_len ++;
 
@@ -398,6 +400,7 @@ struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
     free(group_str);
 
     group->id = current_id;
+
     output->groups[current_id] = group;
     current_id++;
 
@@ -409,7 +412,7 @@ struct ACHIEVEMENT_LOGIC *get_achievement(char *achievement, size_t len)
 }
 
 
-// TODO: this was made quickly, a rework of it wouldn't hurt.
+// NOTE: this was made quickly, a rework of it wouldn't hurt.
 struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
 {
   struct LEADERBOARD *output = malloc(sizeof(struct LEADERBOARD));
@@ -481,5 +484,267 @@ struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
   free(submit_str);
   free(value_str);
 
+  return output;
+}
+
+struct ACHIEVEMENT *get_achievement_from_json(const cJSON *json_achievement, int *status)
+{
+  const cJSON *id = cJSON_GetObjectItemCaseSensitive(json_achievement, "ID");
+  const cJSON *logic = cJSON_GetObjectItemCaseSensitive(json_achievement, "MemAddr");
+  const cJSON *title = cJSON_GetObjectItemCaseSensitive(json_achievement, "Title");
+  const cJSON *description = cJSON_GetObjectItemCaseSensitive(json_achievement, "Description");
+  const cJSON *points = cJSON_GetObjectItemCaseSensitive(json_achievement, "Points");
+  const cJSON *type = cJSON_GetObjectItemCaseSensitive(json_achievement, "Type");
+
+  if
+  (
+    cJSON_IsNumber(id) == 0 ||
+    cJSON_IsString(logic) == 0 ||
+    cJSON_IsString(title) == 0 ||
+    cJSON_IsString(description) == 0 ||
+    cJSON_IsNumber(points) == 0 ||
+    (cJSON_IsString(type) == 0 && cJSON_IsNull(type) == 0)
+  )
+  {
+    *status = WRONG_JSON_OBJECT_TYPE;
+    return NULL;
+  }
+
+  struct ACHIEVEMENT *achievement = malloc(sizeof(struct ACHIEVEMENT));
+  achievement->logic = get_achievement(logic->valuestring, strlen(logic->valuestring));
+  achievement->id = id->valueint;
+
+  achievement->title = malloc(strlen(title->valuestring) + 1);
+  memcpy(achievement->title, title->valuestring, strlen(title->valuestring));
+  achievement->title[strlen(title->valuestring)] = '\0';
+
+  achievement->description = malloc(strlen(description->valuestring) + 1);
+  memcpy(achievement->description, description->valuestring, strlen(description->valuestring));
+  achievement->description[strlen(description->valuestring)] = '\0';
+
+  achievement->points = points->valueint;
+
+  if (cJSON_IsNull(type)) achievement->type = ACHIEVEMENT_TYPE_NONE;
+  else if (strcmp(type->valuestring, "progression") == 0) achievement->type = ACHIEVEMENT_TYPE_PROGRESSION;
+  else if (strcmp(type->valuestring, "win_condition") == 0) achievement->type = ACHIEVEMENT_TYPE_WIN_CONDITION;
+  else if (strcmp(type->valuestring, "missable") == 0) achievement->type = ACHIEVEMENT_TYPE_MISSABLE;
+  else
+  {
+    free(achievement);
+    *status = UNKNOWN_ACHIEVEMENT_TYPE;
+    return NULL;
+  }
+
+  return achievement;
+}
+
+struct LEADERBOARD *get_leaderboard_from_json(const cJSON *json_leaderboard, int *status)
+{
+  const cJSON *id = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "ID");
+  const cJSON *logic = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "Mem");
+  const cJSON *format = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "Format");
+  const cJSON *lower_is_better = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "LowerIsBetter");
+  const cJSON *title = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "Title");
+  const cJSON *description = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "Description");
+
+  if
+  (
+    cJSON_IsNumber(id) == 0 ||
+    cJSON_IsString(logic) == 0 ||
+    cJSON_IsString(format) == 0 ||
+    cJSON_IsBool(lower_is_better) == 0 ||
+    cJSON_IsString(title) == 0 ||
+    cJSON_IsString(description) == 0
+  )
+  {
+    *status = WRONG_JSON_OBJECT_TYPE;
+    return NULL;
+  }
+
+  struct LEADERBOARD *leaderboard = get_leaderboard(logic->valuestring, strlen(logic->valuestring));
+  leaderboard->id = id->valueint;
+
+  leaderboard->title = malloc(strlen(title->valuestring) + 1);
+  memcpy(leaderboard->title, title->valuestring, strlen(title->valuestring) + 1);
+
+  leaderboard->description = malloc(strlen(description->valuestring) + 1);
+  memcpy(leaderboard->description, description->valuestring, strlen(description->valuestring) + 1);
+
+  leaderboard->lower_is_better = cJSON_IsTrue(lower_is_better);
+ 
+  const char *format_str = format->valuestring;
+
+  if (strcmp(format_str, "SCORE") == 0) leaderboard->format = FORMAT_SCORE;
+  else if (strcmp(format_str, "TIME") == 0) leaderboard->format = FORMAT_TIME_FRAMES;
+  else if (strcmp(format_str, "MILLISECS") == 0) leaderboard->format = FORMAT_TIME_CENTISECONDS;
+  else if (strcmp(format_str, "TIMESECS") == 0) leaderboard->format = FORMAT_TIME_SECONDS;
+  else if (strcmp(format_str, "MINUTES") == 0) leaderboard->format = FORMAT_TIME_MINUTES;
+  else if (strcmp(format_str, "SECS_AS_MINS") == 0) leaderboard->format = FORMAT_TIME_SECONDS_AS_MINUTES;
+  else if (strcmp(format_str, "VALUE") == 0) leaderboard->format = FORMAT_VALUE;
+  else if (strcmp(format_str, "UNSIGNED") == 0) leaderboard->format = FORMAT_VALUE_UNSIGNED;
+  else if (strcmp(format_str, "TENS") == 0) leaderboard->format = FORMAT_VALUE_TENS;
+  else if (strcmp(format_str, "HUNDREDS") == 0) leaderboard->format = FORMAT_VALUE_HUNDREDS;
+  else if (strcmp(format_str, "THOUSANDS") == 0) leaderboard->format = FORMAT_VALUE_THOUSANDS;
+  else if (strcmp(format_str, "FIXED1") == 0) leaderboard->format = FORMAT_VALUE_FIXED1;
+  else if (strcmp(format_str, "FIXED2") == 0) leaderboard->format = FORMAT_VALUE_FIXED2;
+  else if (strcmp(format_str, "FIXED3") == 0) leaderboard->format = FORMAT_VALUE_FIXED3;
+  else
+  {
+    free(leaderboard);
+    *status = UNKNOWN_LEADERBOARD_FORMAT;
+    return NULL;
+  }
+
+  return leaderboard;
+}
+
+struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_set, int *status)
+{
+  const cJSON *type = NULL;
+  const cJSON *json_achievements = NULL;
+  const cJSON *json_achievement = NULL;
+  const cJSON *json_leaderboards = NULL;
+  const cJSON *json_leaderboard = NULL;
+
+  type = cJSON_GetObjectItemCaseSensitive(achievement_set, "Type");
+
+  json_achievements = cJSON_GetObjectItemCaseSensitive(achievement_set, "Achievements");
+  int achievement_count = cJSON_GetArraySize(json_achievements);
+  struct ACHIEVEMENT **achievements = malloc(sizeof(struct ACHIEVEMENT *) * achievement_count);
+
+  json_leaderboards = cJSON_GetObjectItemCaseSensitive(achievement_set, "Leaderboards");
+  int leaderboard_count = cJSON_GetArraySize(json_leaderboards);
+  struct LEADERBOARD **leaderboards = malloc(sizeof(struct LEADERBOARD *) * leaderboard_count);
+
+  if
+  (
+    cJSON_IsString(type) == 0 ||
+    cJSON_IsArray(json_achievements) == 0 ||
+    cJSON_IsArray(json_leaderboards) == 0
+  )
+  {
+    *status = WRONG_JSON_OBJECT_TYPE;
+    return NULL;
+  }
+
+  struct ACHIEVEMENT_SET *output = malloc(sizeof(struct ACHIEVEMENT_SET));
+
+  int index = 0;
+  cJSON_ArrayForEach(json_achievement, json_achievements)
+  {
+    achievements[index] = get_achievement_from_json(json_achievement, status);
+    if (achievements[index] == NULL)
+    {
+      return NULL;
+    }
+    index ++;
+  }
+
+  index = 0;
+  cJSON_ArrayForEach(json_leaderboard, json_leaderboards)
+  {
+    leaderboards[index] = get_leaderboard_from_json(json_leaderboard, status);
+    if (leaderboards[index] == NULL)
+    {
+      return NULL;
+    }
+    index ++;
+  }
+
+  if (strcmp(type->valuestring, "core") == 0) output->type = SET_CORE;
+  else if (strcmp(type->valuestring, "bonus") == 0) output->type = SET_SUBSET;
+  else
+  {
+    *status = UNKNOWN_SET_TYPE;
+    return NULL;
+  }
+
+  output->achievement_count = achievement_count;
+  output->achievements = achievements;
+
+  output->leaderboard_count = leaderboard_count;
+  output->leaderboards = leaderboards;
+
+  return output;
+}
+
+struct GAME *get_game_from_json(char *path)
+{
+  int status = SUCCESS;
+
+  FILE *json_ptr = fopen(path, "r");
+  if (json_ptr == NULL)
+  {
+    // TODO: add diagnostic
+    return NULL;
+  }
+
+  fseek(json_ptr, 0, SEEK_END);
+  long int json_len = ftell(json_ptr);
+  rewind(json_ptr);
+
+  char *json_str = malloc(json_len + 1);
+  fread(json_str, 1, json_len, json_ptr);
+  json_str[json_len] = '\0';
+  fclose(json_ptr);
+
+  cJSON *json = cJSON_Parse(json_str);
+  if (json == NULL)
+  {
+    const char *error_ptr = cJSON_GetErrorPtr();
+    if (error_ptr != NULL)
+    {
+      // TODO: add diagnostic
+    }
+    return NULL;
+  }
+
+  const cJSON *gameID = NULL;
+  const cJSON *title = NULL;
+  const cJSON *consoleID = NULL;
+
+  const cJSON *achievement_sets = NULL;
+  const cJSON *achievement_set = NULL;
+
+  gameID = cJSON_GetObjectItemCaseSensitive(json, "GameId");
+  title = cJSON_GetObjectItemCaseSensitive(json, "Title");
+  consoleID = cJSON_GetObjectItemCaseSensitive(json, "ConsoleId");
+  achievement_sets = cJSON_GetObjectItemCaseSensitive(json, "Sets");
+  if
+  (
+    cJSON_IsNumber(gameID) == 0 ||
+    cJSON_IsString(title) == 0 ||
+    cJSON_IsNumber(consoleID) == 0 ||
+    cJSON_IsArray(achievement_sets) == 0
+  )
+  {
+    status = WRONG_JSON_OBJECT_TYPE;
+    goto end;
+  }
+  printf("%d| %s   nb of sets : %d\n", gameID->valueint, title->valuestring, cJSON_GetArraySize(achievement_sets));
+
+  int set_count = cJSON_GetArraySize(achievement_sets);
+  struct GAME *output = malloc(sizeof(struct GAME) + sizeof(struct ACHIEVEMENT_SET *) * set_count);
+
+  int index = 0;
+  cJSON_ArrayForEach(achievement_set, achievement_sets)
+  {
+    output->sets[index] = get_achievement_set_from_json(achievement_set, &status);
+    if (output->sets[index] == NULL) goto end;
+    index ++;
+  }
+
+  output->id = gameID->valueint;
+  output->consoleID = consoleID->valueint;
+
+  output->title = malloc(strlen(title->valuestring) + 1);
+  memcpy(output->title, title->valuestring, strlen(title->valuestring));
+  output->title[strlen(title->valuestring)] = '\0';
+end:
+
+  // TODO: something with status code for error diagnostic
+  cJSON_Delete(json);
+  if (status != SUCCESS) return NULL;
+  printf("Game parsed successfully\n");
   return output;
 }

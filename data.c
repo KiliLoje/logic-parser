@@ -79,6 +79,106 @@ void append_bonus_set(struct ACHIEVEMENT_SET *set,struct GAME *game)
   game->sets[game->set_count - 1] = set;
 }
 
+
+struct CONDITION *get_condition_by_index(struct GROUP *group, int index)
+{
+  if (!group) return NULL;
+
+  struct CONDITION *condition;
+  int i = 0;
+  for_each_condition(condition, group)
+  {
+    if (i == index) return condition;
+    i ++;
+  }
+
+  return NULL;
+}
+
+struct GROUP *get_group_by_index(struct ACHIEVEMENT_LOGIC *logic, int index)
+{
+  if (!logic) return NULL;
+
+  struct GROUP *group;
+  int i = 0;
+  for_each_group(group, logic)
+  {
+    if (i == index) return group;
+    i ++;
+  }
+
+  return NULL;
+}
+
+struct ACHIEVEMENT *get_achievement_by_index(struct ACHIEVEMENT_SET *set, int index)
+{
+  if (!set) return NULL;
+
+  struct ACHIEVEMENT *achievement;
+  int i = 0;
+  for_each_achievement(achievement, set)
+  {
+    if (i == index) return achievement;
+    i ++;
+  }
+
+  return NULL;
+}
+
+struct ACHIEVEMENT *get_achievement_by_id(struct ACHIEVEMENT_SET *set, int ach_id)
+{
+  if (!set || !ach_id) return NULL;
+
+  struct ACHIEVEMENT *achievement;
+  for_each_achievement(achievement, set)
+  {
+    if (achievement->id == ach_id) return achievement;
+  }
+
+  return NULL;
+}
+
+struct LEADERBOARD *get_leaderboard_by_index(struct ACHIEVEMENT_SET *set, int index)
+{
+  if (!set) return NULL;
+
+  struct LEADERBOARD *leaderboard;
+  int i = 0;
+  for_each_leaderboard(leaderboard, set)
+  {
+    if (i == index) return leaderboard;
+    i ++;
+  }
+
+  return NULL;
+}
+
+struct LEADERBOARD *get_leaderboard_by_id(struct ACHIEVEMENT_SET *set, int lb_id)
+{
+  if (!set) return NULL;
+
+  struct LEADERBOARD *leaderboard;
+  for_each_leaderboard(leaderboard, set)
+  {
+    if (leaderboard->id == lb_id) return leaderboard;
+  }
+
+  return NULL;
+}
+
+struct ACHIEVEMENT_SET *get_core_set(struct GAME *game)
+{
+  if (!game) return NULL;
+
+  struct ACHIEVEMENT_SET *set;
+  for_each_set(set, game)
+  {
+    if (set->type == SET_CORE) return set;
+  }
+
+  return NULL;
+}
+
 void free_condition(struct CONDITION *condition)
 {
   if (!condition) return;

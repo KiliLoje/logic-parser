@@ -49,6 +49,13 @@ void append_achievements(struct ACHIEVEMENT *achievement_head, struct ACHIEVEMEN
 void append_leaderboards(struct LEADERBOARD *leaderboard_head, struct ACHIEVEMENT_SET *set);
 void append_bonus_set(struct ACHIEVEMENT_SET *set, struct GAME *game);
 
+struct CONDITION *get_condition_by_index(struct GROUP *group, int index);
+struct GROUP *get_group_by_index(struct ACHIEVEMENT_LOGIC *logic, int index);
+struct ACHIEVEMENT *get_achievement_by_index(struct ACHIEVEMENT_SET *set, int index);
+struct ACHIEVEMENT *get_achievement_by_id(struct ACHIEVEMENT_SET *set, int ach_id);
+struct LEADERBOARD *get_leaderboard_by_index(struct ACHIEVEMENT_SET *set, int index);
+struct LEADERBOARD *get_leaderboard_by_id(struct ACHIEVEMENT_SET *set, int lb_id);
+struct ACHIEVEMENT_SET *get_core_set(struct GAME *game);
 
 void free_condition(struct CONDITION *condition);
 void free_group(struct GROUP *group);

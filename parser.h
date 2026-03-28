@@ -53,14 +53,4 @@ struct GAME *get_game_from_json(char *path);
 struct ACHIEVEMENT_SET *get_achievement_set_from_txt(char *path);
 struct ACHIEVEMENT_SET *get_achievement_set_from_web(int id);
 
-struct ACHIEVEMENT_SET *combine_sets(struct ACHIEVEMENT_SET **sets);
-
-
-void free_numeral(struct NUMERAL *numeral);
-void free_condition(struct CONDITION *condition);
-void free_group(struct GROUP *group);
-void free_achievement(struct ACHIEVEMENT *achievement);
-void free_leaderboard(struct LEADERBOARD *leaderboard);
-void free_achievement_set(struct ACHIEVEMENT_SET *achievement_set);
-
 #endif // !PARSER_H

@@ -773,6 +773,6 @@ end:
 
   // TODO: something with status code for error diagnostic
   cJSON_Delete(json);
-  if (status != SUCCESS) return NULL;
+  if (status != SUCCESS) {free(output); return NULL;}
   return output;
 }

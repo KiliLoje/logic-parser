@@ -202,11 +202,8 @@ struct GAME
   char *title;
   ConsoleID consoleID;
 
-  int hub_count;
-  int *hubs_id;
-
   size_t set_count;
-  struct ACHIEVEMENT_SET *sets[];
+  struct ACHIEVEMENT_SET **sets;
 };
 
 #endif // !ACHIEVEMENT_H

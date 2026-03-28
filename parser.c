@@ -1,10 +1,11 @@
+#include "parser.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 
-#include "parser.h"
 #include "achievement.h"
 #include "cJSON.h"
 
@@ -69,7 +70,7 @@ int is_recall(char *numeral, size_t len)
   return numeral[0] == '{';
 }
 
-Type get_type(char *numeral, size_t len)
+Type parse_type(char *numeral, size_t len)
 {
   // Value is the only type that can be this length
   if (len <= 2) return TYPE_VALUE;
@@ -91,7 +92,7 @@ Type get_type(char *numeral, size_t len)
   return TYPE_VALUE;
 }
 
-Size get_size(char *numeral, size_t len, Type type)
+Size parse_size(char *numeral, size_t len, Type type)
 {
   // Value, Recall, and Floats do not hold any size
   if (type == TYPE_VALUE || type == TYPE_RECALL || type == TYPE_FLOAT) return SIZE_NONE;
@@ -166,14 +167,14 @@ long parse_address(struct NUMERAL *input, char *numeral)
   return address;
 }
 
-struct NUMERAL *get_numeral(char *numeral, size_t len)
+struct NUMERAL *parse_numeral(char *numeral, size_t len)
 {
   if (len == 0) return NULL;
 
   struct NUMERAL *output = malloc(sizeof(struct NUMERAL));
 
-  output->type = get_type(numeral, len);
-  output->size = get_size(numeral, len, output->type);
+  output->type = parse_type(numeral, len);
+  output->size = parse_size(numeral, len, output->type);
 
   switch (output->type)
   {
@@ -193,7 +194,7 @@ struct NUMERAL *get_numeral(char *numeral, size_t len)
   return output;
 }
 
-Flag get_flag(char *condition)
+Flag parse_flag(char *condition)
 {
   if (condition[1] == ':')
   {
@@ -204,7 +205,7 @@ Flag get_flag(char *condition)
   else return FLAG_NONE;
 }
 
-Operator get_op(char *condition, size_t len, int *index)
+Operator parse_op(char *condition, size_t len, int *index)
 {
   for(int i = 0; i < len; i ++)
     switch (condition[i])
@@ -274,7 +275,7 @@ Operator get_op(char *condition, size_t len, int *index)
   return OP_NONE;
 }
 
-long get_hit_target(char *condition, size_t len)
+long parse_hit_target(char *condition, size_t len)
 {
   if(condition[len - 1] != '.')
     return 0;
@@ -292,13 +293,13 @@ long get_hit_target(char *condition, size_t len)
   }
 }
 
-struct CONDITION *get_condition(char *condition, size_t len)
+struct CONDITION *parse_condition(char *condition, size_t len)
 {
   struct CONDITION *output = malloc(sizeof(struct CONDITION));
   int op_index;
-  output->flag = get_flag(condition);
-  output->op = get_op(condition, len, &op_index);
-  output->hit_target = get_hit_target(condition, len);
+  output->flag = parse_flag(condition);
+  output->op = parse_op(condition, len, &op_index);
+  output->hit_target = parse_hit_target(condition, len);
 
   int lhs_start = (output->flag != FLAG_NONE) * 2;
   int lhs_end = op_index;
@@ -306,7 +307,7 @@ struct CONDITION *get_condition(char *condition, size_t len)
   char *lhs = malloc(lhs_len + 1);
   memcpy(lhs, condition + lhs_start, lhs_len);
   lhs[lhs_len] = '\0';
-  output->lhs = *get_numeral(lhs, lhs_len);
+  output->lhs = *parse_numeral(lhs, lhs_len);
   free(lhs);
 
   if (output-> op == OP_NONE)
@@ -329,13 +330,13 @@ struct CONDITION *get_condition(char *condition, size_t len)
   char *rhs = malloc(rhs_len + 1);
   memcpy(rhs, condition + rhs_start, rhs_len);
   rhs[rhs_len] = '\0';
-  output->rhs = *get_numeral(rhs, rhs_len);
+  output->rhs = *parse_numeral(rhs, rhs_len);
   free(rhs);
 
   return output;
 }
 
-struct GROUP *get_group(char *group, size_t len)
+struct GROUP *parse_group(char *group, size_t len)
 {
   struct GROUP *output = malloc(sizeof(struct GROUP));
 
@@ -358,7 +359,7 @@ struct GROUP *get_group(char *group, size_t len)
     memcpy(condition_str, group + last_separator_index, condition_len);
     condition_str[condition_len] = '\0';
 
-    struct CONDITION *new_condition = get_condition(condition_str, condition_len);
+    struct CONDITION *new_condition = parse_condition(condition_str, condition_len);
 
     free(condition_str);
 
@@ -383,7 +384,7 @@ struct GROUP *get_group(char *group, size_t len)
   return output;
 }
 
-struct ACHIEVEMENT_LOGIC *get_achievement_logic(char *achievement, size_t len)
+struct ACHIEVEMENT_LOGIC *parse_achievement_logic(char *achievement, size_t len)
 {
   struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC));
 
@@ -407,7 +408,7 @@ struct ACHIEVEMENT_LOGIC *get_achievement_logic(char *achievement, size_t len)
     memcpy(group_str, achievement + last_separator_index, group_len);
     group_str[group_len] = '\0';
 
-    struct GROUP *new_group = get_group(group_str, group_len);
+    struct GROUP *new_group = parse_group(group_str, group_len);
 
     free(group_str);
 
@@ -435,7 +436,7 @@ struct ACHIEVEMENT_LOGIC *get_achievement_logic(char *achievement, size_t len)
 
 
 // NOTE: this was made quickly, a rework of it wouldn't hurt.
-struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
+struct LEADERBOARD *parse_leaderboard(char *leaderboard, size_t len)
 {
   struct LEADERBOARD *output = malloc(sizeof(struct LEADERBOARD));
 
@@ -496,10 +497,10 @@ struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
   memcpy(value_str, leaderboard + value_index, value_len);
   value_str[value_len] = '\0';
 
-  output->start = get_achievement_logic(start_str, start_len);
-  output->cancel = get_achievement_logic(cancel_str, cancel_len);
-  output->submit = get_achievement_logic(submit_str, submit_len);
-  output->value = get_achievement_logic(value_str, value_len);
+  output->start = parse_achievement_logic(start_str, start_len);
+  output->cancel = parse_achievement_logic(cancel_str, cancel_len);
+  output->submit = parse_achievement_logic(submit_str, submit_len);
+  output->value = parse_achievement_logic(value_str, value_len);
 
   free(start_str);
   free(cancel_str);
@@ -509,7 +510,7 @@ struct LEADERBOARD *get_leaderboard(char *leaderboard, size_t len)
   return output;
 }
 
-struct ACHIEVEMENT *get_achievement_from_json(const cJSON *json_achievement, int *status)
+struct ACHIEVEMENT *parse_achievement_from_json(const cJSON *json_achievement, int *status)
 {
   const cJSON *id = cJSON_GetObjectItemCaseSensitive(json_achievement, "ID");
   const cJSON *logic = cJSON_GetObjectItemCaseSensitive(json_achievement, "MemAddr");
@@ -533,7 +534,7 @@ struct ACHIEVEMENT *get_achievement_from_json(const cJSON *json_achievement, int
   }
 
   struct ACHIEVEMENT *achievement = malloc(sizeof(struct ACHIEVEMENT));
-  achievement->logic = get_achievement_logic(logic->valuestring, strlen(logic->valuestring));
+  achievement->logic = parse_achievement_logic(logic->valuestring, strlen(logic->valuestring));
   achievement->id = id->valueint;
 
   achievement->title = malloc(strlen(title->valuestring) + 1);
@@ -560,7 +561,7 @@ struct ACHIEVEMENT *get_achievement_from_json(const cJSON *json_achievement, int
   return achievement;
 }
 
-struct LEADERBOARD *get_leaderboard_from_json(const cJSON *json_leaderboard, int *status)
+struct LEADERBOARD *parse_leaderboard_from_json(const cJSON *json_leaderboard, int *status)
 {
   const cJSON *id = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "ID");
   const cJSON *logic = cJSON_GetObjectItemCaseSensitive(json_leaderboard, "Mem");
@@ -583,7 +584,7 @@ struct LEADERBOARD *get_leaderboard_from_json(const cJSON *json_leaderboard, int
     return NULL;
   }
 
-  struct LEADERBOARD *leaderboard = get_leaderboard(logic->valuestring, strlen(logic->valuestring));
+  struct LEADERBOARD *leaderboard = parse_leaderboard(logic->valuestring, strlen(logic->valuestring));
   leaderboard->id = id->valueint;
 
   leaderboard->title = malloc(strlen(title->valuestring) + 1);
@@ -618,7 +619,7 @@ struct LEADERBOARD *get_leaderboard_from_json(const cJSON *json_leaderboard, int
   return leaderboard;
 }
 
-struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_set, int *status)
+struct ACHIEVEMENT_SET *parse_achievement_set_from_json(const cJSON *achievement_set, int *status)
 {
   const cJSON *type = NULL;
   const cJSON *json_achievements = NULL;
@@ -651,7 +652,7 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
 
   cJSON_ArrayForEach(json_achievement, json_achievements)
   {
-    struct ACHIEVEMENT *new_achievement = get_achievement_from_json(json_achievement, status);
+    struct ACHIEVEMENT *new_achievement = parse_achievement_from_json(json_achievement, status);
     if (new_achievement == NULL)
     {
       return NULL;
@@ -667,7 +668,7 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
 
   cJSON_ArrayForEach(json_leaderboard, json_leaderboards)
   {
-    struct LEADERBOARD *new_leaderboard = get_leaderboard_from_json(json_leaderboard, status);
+    struct LEADERBOARD *new_leaderboard = parse_leaderboard_from_json(json_leaderboard, status);
     if (new_leaderboard == NULL)
     {
       return NULL;
@@ -698,7 +699,7 @@ struct ACHIEVEMENT_SET *get_achievement_set_from_json(const cJSON *achievement_s
   return output;
 }
 
-struct GAME *get_game_from_json(char *path)
+struct GAME *parse_game_from_json(char *path)
 {
   int status = SUCCESS;
 
@@ -758,7 +759,7 @@ struct GAME *get_game_from_json(char *path)
   int index = 0;
   cJSON_ArrayForEach(achievement_set, achievement_sets)
   {
-    output->sets[index] = get_achievement_set_from_json(achievement_set, &status);
+    output->sets[index] = parse_achievement_set_from_json(achievement_set, &status);
     if (output->sets[index] == NULL) goto end;
     index ++;
   }

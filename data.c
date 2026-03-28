@@ -1,6 +1,8 @@
-#include "achievement.h"
 #include "data.h"
+
 #include <stdio.h>
+
+#include "achievement.h"
 
 void append_conditions(struct CONDITION *condition_head, struct GROUP *group)
 {
@@ -62,8 +64,10 @@ void append_leaderboards(struct LEADERBOARD *leaderboard_head, struct ACHIEVEMEN
   set->leaderboard_tail = tail;
 }
 
-void append_set(struct ACHIEVEMENT_SET *set,struct GAME *game)
+void append_bonus_set(struct ACHIEVEMENT_SET *set,struct GAME *game)
 {
+  if (!set || set->type == SET_CORE) return;
+
   int new_count = game->set_count + 1;
   struct ACHIEVEMENT_SET **temp = realloc(game->sets, new_count * sizeof(struct ACHIEVEMENT_SET *));
   if (!temp)
@@ -110,8 +114,8 @@ void free_achievement(struct ACHIEVEMENT *achievement)
   if (!achievement) return;
 
   free(achievement->title);
-
   free(achievement->description);
+
   free_achievement_logic(achievement->logic);
 
   free(achievement);
@@ -159,5 +163,6 @@ void free_game(struct GAME *game)
   for_each_set(set, game)
     free_set(set);
 
+  free(game->sets);
   free(game);
 }

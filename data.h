@@ -47,7 +47,8 @@ void append_conditions(struct CONDITION *condition_head, struct GROUP *group);
 void append_groups(struct GROUP *group_head, struct ACHIEVEMENT_LOGIC *logic);
 void append_achievements(struct ACHIEVEMENT *achievement_head, struct ACHIEVEMENT_SET *set);
 void append_leaderboards(struct LEADERBOARD *leaderboard_head, struct ACHIEVEMENT_SET *set);
-void append_set(struct ACHIEVEMENT_SET *set, struct GAME *game);
+void append_bonus_set(struct ACHIEVEMENT_SET *set, struct GAME *game);
+
 
 void free_condition(struct CONDITION *condition);
 void free_group(struct GROUP *group);

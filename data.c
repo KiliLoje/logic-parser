@@ -1,6 +1,7 @@
 #include "data.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "achievement.h"
 
@@ -179,6 +180,249 @@ struct ACHIEVEMENT_SET *get_core_set(struct GAME *game)
   return NULL;
 }
 
+
+struct CONDITION *copy_conditions(struct CONDITION *head, struct CONDITION *tail)
+{
+  if (!head || !tail) return NULL;
+
+  struct CONDITION *output = NULL;
+
+  struct CONDITION *output_current = NULL;
+  struct CONDITION *output_last = NULL;
+
+  for (struct CONDITION *current = head; current != tail->next; current = current->next)
+  {
+    if (!current) goto deallocate;
+
+    output_current = malloc(sizeof(struct CONDITION));
+    if (!output_current) goto deallocate;
+    memcpy(output_current, current, sizeof(struct CONDITION));
+
+    output_current->next = NULL;
+    output_current->prev = output_last;
+
+    if (output_last)
+      output_last->next = output_current;
+    else
+      output = output_current;
+
+    output_last = output_current;
+  }
+
+  return output;
+
+deallocate:
+  {
+    struct CONDITION *tmp;
+    while (output)
+    {
+      tmp = output->next;
+      free_condition(output);
+      output = tmp;
+    }
+    return NULL;
+  }
+}
+
+struct GROUP *copy_groups(struct GROUP *head, struct GROUP *tail)
+{
+  if (!head || !tail) return NULL;
+
+  struct GROUP *output = NULL;
+
+  struct GROUP *output_current = NULL;
+  struct GROUP *output_last = NULL;
+
+  for (struct GROUP *current = head; current != tail->next; current = current->next)
+  {
+    if (!current) goto deallocate;
+
+    output_current = malloc(sizeof(struct GROUP));
+    if (!output_current) goto deallocate;
+
+    output_current->id = current->id;
+    output_current->condition_head = copy_conditions(current->condition_head, current->condition_tail);
+
+    struct CONDITION *tail;
+    while (tail->next)
+      tail = tail->next;
+
+    output->condition_tail = tail;
+
+    output_current->next = NULL;
+    output_current->prev = output_last;
+
+    if (output_last)
+      output_last->next = output_current;
+    else
+      output = output_current;
+
+    output_last = output_current;
+  }
+
+  return output;
+
+deallocate:
+  {
+    struct GROUP *tmp;
+    while (output)
+    {
+      tmp = output->next;
+      free_group(output);
+      output = tmp;
+    }
+    return NULL;
+  }
+}
+
+struct ACHIEVEMENT_LOGIC *copy_logic(struct ACHIEVEMENT_LOGIC *logic)
+{
+  if (!logic) return NULL;
+
+  struct ACHIEVEMENT_LOGIC *output = malloc(sizeof(struct ACHIEVEMENT_LOGIC));
+  if (!output) return NULL;
+
+  output->group_head = copy_groups(logic->group_head, logic->group_tail);
+
+  struct GROUP *tail = output->group_head;
+  while (tail->next)
+    tail = tail->next;
+
+  output->group_tail = tail;
+
+  return output;
+}
+
+struct ACHIEVEMENT *copy_achievements(struct ACHIEVEMENT *head, struct ACHIEVEMENT *tail)
+{
+  if (!head || !tail) return NULL;;
+
+  struct ACHIEVEMENT *output = NULL;
+
+  struct ACHIEVEMENT *output_current = NULL;
+  struct ACHIEVEMENT *output_last = NULL;
+
+  for (struct ACHIEVEMENT *current = head; current != tail->next; current = current->next)
+  {
+    if (!current) goto deallocate;
+
+    output_current = malloc(sizeof(struct ACHIEVEMENT));
+    if (!output_current) goto deallocate;
+
+    output_current->id = current->id;
+    output_current->points = current->points;
+    output_current->type = current->type;
+
+    strcpy(current->title, output_current->title);
+    strcpy(current->description, output_current->description);
+
+    output_current->logic = copy_logic(current->logic);
+
+    output_current->next = NULL;
+    output_current->prev = output_last;
+
+    if (output_last)
+      output_last->next = output_current;
+    else
+      output = output_current;
+
+    output_last = output_current;
+  }
+
+  return output;
+
+deallocate:
+  {
+    struct ACHIEVEMENT *tmp;
+    while (output)
+    {
+      tmp = output->next;
+      free_achievement(output);
+      output = tmp;
+    }
+    return NULL;
+  }
+}
+
+struct LEADERBOARD *copy_leaderboards(struct LEADERBOARD *head, struct LEADERBOARD *tail)
+{
+  if (!head || !tail) return NULL;;
+
+  struct LEADERBOARD *output = NULL;
+
+  struct LEADERBOARD *output_current = NULL;
+  struct LEADERBOARD *output_last = NULL;
+
+  for (struct LEADERBOARD *current = head; current != tail->next; current = current->next)
+  {
+    if (!current) goto deallocate;
+
+    output_current = malloc(sizeof(struct LEADERBOARD));
+    if (!output_current) goto deallocate;
+
+    output_current->id = current->id;
+    output_current->format = current->format;
+    output_current->lower_is_better = current->lower_is_better;
+
+    strcpy(current->title, output_current->title);
+    strcpy(current->description, output_current->description);
+
+    output_current->start = copy_logic(current->start);
+    output_current->cancel = copy_logic(current->cancel);
+    output_current->submit = copy_logic(current->submit);
+    output_current->value = copy_logic(current->value);
+
+    output_current->next = NULL;
+    output_current->prev = output_last;
+
+    if (output_last)
+      output_last->next = output_current;
+    else
+      output = output_current;
+
+    output_last = output_current;
+  }
+
+  return output;
+
+deallocate:
+  {
+    struct LEADERBOARD *tmp;
+    while (output)
+    {
+      tmp = output->next;
+      free_leaderboard(output);
+      output = tmp;
+    }
+    return NULL;
+  }
+}
+
+
+void compute_condition_ids(struct GROUP *group)
+{
+  struct CONDITION *condition;
+  int i = 1; // conditions ID is 1-indexed
+  for_each_condition(condition, group)
+  {
+    condition->id = i;
+    i ++;
+  }
+}
+
+void compute_group_ids(struct ACHIEVEMENT_LOGIC *logic)
+{
+  struct GROUP *group;
+  int i = 0;
+  for_each_group(group, logic)
+  {
+    group->id = i;
+    i ++;
+  }
+}
+
+
+
 void free_condition(struct CONDITION *condition)
 {
   if (!condition) return;
@@ -191,8 +435,11 @@ void free_group(struct GROUP *group)
 
   struct CONDITION *condition;
   for_each_condition(condition, group)
-    free_condition(condition->prev);
-  free_condition(group->condition_tail);
+  {
+    struct CONDITION *tmp= condition->next;
+    free(condition);
+    condition = tmp;
+  }
 
   free(group);
 }
@@ -203,8 +450,11 @@ void free_achievement_logic(struct ACHIEVEMENT_LOGIC *logic)
 
   struct GROUP *group;
   for_each_group(group, logic)
-    free_group(group->prev);
-  free_group(logic->group_tail);
+  {
+    struct GROUP *tmp = group->next;
+    free(group);
+    group = tmp;
+  }
 
   free(logic);
 }
@@ -242,13 +492,19 @@ void free_set(struct ACHIEVEMENT_SET *set)
 
   struct ACHIEVEMENT *achievement;
   for_each_achievement(achievement, set)
-    free_achievement(achievement->prev);
-  free_achievement(set->achievement_tail);
+  {
+    struct ACHIEVEMENT *tmp = achievement->next;
+    free(achievement);
+    achievement = tmp;
+  }
 
   struct LEADERBOARD *leaderboard;
   for_each_leaderboard(leaderboard, set)
-    free_leaderboard(leaderboard->prev);
-  free_leaderboard(set->leaderboard_tail);
+  {
+    struct LEADERBOARD *tmp = leaderboard->next;
+    free(leaderboard);
+    leaderboard = tmp;
+  }
 
   free(set);
 }

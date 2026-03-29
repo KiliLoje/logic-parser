@@ -57,6 +57,14 @@ struct LEADERBOARD *get_leaderboard_by_index(struct ACHIEVEMENT_SET *set, int in
 struct LEADERBOARD *get_leaderboard_by_id(struct ACHIEVEMENT_SET *set, int lb_id);
 struct ACHIEVEMENT_SET *get_core_set(struct GAME *game);
 
+struct CONDITION *copy_conditions(struct CONDITION *head, struct CONDITION *tail);
+struct GROUP *copy_groups(struct GROUP *head, struct GROUP *tail);
+struct ACHIEVEMENT *copy_achievements(struct ACHIEVEMENT *head, struct ACHIEVEMENT *tail);
+struct LEADERBOARD *copy_leaderboards(struct LEADERBOARD *head, struct LEADERBOARD *tail);
+
+void compute_condition_ids(struct GROUP *group);
+void compute_group_ids(struct ACHIEVEMENT_LOGIC *logic);
+
 void free_condition(struct CONDITION *condition);
 void free_group(struct GROUP *group);
 void free_achievement_logic(struct ACHIEVEMENT_LOGIC *logic);

@@ -242,12 +242,13 @@ struct GROUP *copy_groups(struct GROUP *head, struct GROUP *tail)
 
     output_current->id = current->id;
     output_current->condition_head = copy_conditions(current->condition_head, current->condition_tail);
+    if (!output_current->condition_head) goto deallocate;
 
-    struct CONDITION *tail;
+    struct CONDITION *tail = output_current->condition_head;
     while (tail->next)
       tail = tail->next;
 
-    output->condition_tail = tail;
+    output_current->condition_tail = tail;
 
     output_current->next = NULL;
     output_current->prev = output_last;
@@ -422,7 +423,6 @@ void compute_group_ids(struct ACHIEVEMENT_LOGIC *logic)
 }
 
 
-
 void free_condition(struct CONDITION *condition)
 {
   if (!condition) return;
@@ -433,10 +433,10 @@ void free_group(struct GROUP *group)
 {
   if (!group) return;
 
-  struct CONDITION *condition;
-  for_each_condition(condition, group)
+  struct CONDITION *condition = group->condition_head;
+  while (condition)
   {
-    struct CONDITION *tmp= condition->next;
+    struct CONDITION *tmp = condition->next;
     free(condition);
     condition = tmp;
   }
@@ -449,7 +449,7 @@ void free_achievement_logic(struct ACHIEVEMENT_LOGIC *logic)
   if (!logic) return;
 
   struct GROUP *group;
-  for_each_group(group, logic)
+  while (group)
   {
     struct GROUP *tmp = group->next;
     free(group);
@@ -491,7 +491,7 @@ void free_set(struct ACHIEVEMENT_SET *set)
   if (!set) return;
 
   struct ACHIEVEMENT *achievement;
-  for_each_achievement(achievement, set)
+  while (achievement)
   {
     struct ACHIEVEMENT *tmp = achievement->next;
     free(achievement);
@@ -499,7 +499,7 @@ void free_set(struct ACHIEVEMENT_SET *set)
   }
 
   struct LEADERBOARD *leaderboard;
-  for_each_leaderboard(leaderboard, set)
+  while (leaderboard)
   {
     struct LEADERBOARD *tmp = leaderboard->next;
     free(leaderboard);

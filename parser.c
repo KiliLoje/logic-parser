@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "achievement.h"
+#include "data.h"
 #include "cJSON.h"
 
 const char condition_separator = '_';
@@ -436,7 +437,7 @@ struct ACHIEVEMENT_LOGIC *parse_achievement_logic(char *achievement, size_t len)
 
 
 // NOTE: this was made quickly, a rework of it wouldn't hurt.
-struct LEADERBOARD *parse_leaderboard(char *leaderboard, size_t len)
+struct LEADERBOARD *parse_leaderboard_logic(char *leaderboard, size_t len)
 {
   struct LEADERBOARD *output = malloc(sizeof(struct LEADERBOARD));
 
@@ -534,16 +535,22 @@ struct ACHIEVEMENT *parse_achievement_from_json(const cJSON *json_achievement, i
   }
 
   struct ACHIEVEMENT *achievement = malloc(sizeof(struct ACHIEVEMENT));
+  if (!achievement) return NULL;
+  memset(achievement, 0, sizeof(struct ACHIEVEMENT));
+
   achievement->logic = parse_achievement_logic(logic->valuestring, strlen(logic->valuestring));
+  if (!achievement->logic)
+  {
+    return NULL;
+  }
+
   achievement->id = id->valueint;
 
   achievement->title = malloc(strlen(title->valuestring) + 1);
-  memcpy(achievement->title, title->valuestring, strlen(title->valuestring));
-  achievement->title[strlen(title->valuestring)] = '\0';
+  strcpy(achievement->title, title->valuestring);
 
   achievement->description = malloc(strlen(description->valuestring) + 1);
-  memcpy(achievement->description, description->valuestring, strlen(description->valuestring));
-  achievement->description[strlen(description->valuestring)] = '\0';
+  strcpy(achievement->description, description->valuestring);
 
   achievement->points = points->valueint;
 
@@ -553,7 +560,6 @@ struct ACHIEVEMENT *parse_achievement_from_json(const cJSON *json_achievement, i
   else if (strcmp(type->valuestring, "missable") == 0) achievement->type = ACHIEVEMENT_TYPE_MISSABLE;
   else
   {
-    free(achievement);
     *status = UNKNOWN_ACHIEVEMENT_TYPE;
     return NULL;
   }
@@ -584,14 +590,18 @@ struct LEADERBOARD *parse_leaderboard_from_json(const cJSON *json_leaderboard, i
     return NULL;
   }
 
-  struct LEADERBOARD *leaderboard = parse_leaderboard(logic->valuestring, strlen(logic->valuestring));
+  struct LEADERBOARD *leaderboard = parse_leaderboard_logic(logic->valuestring, strlen(logic->valuestring));
+  if (!leaderboard)
+  {
+    return NULL;
+  }
   leaderboard->id = id->valueint;
 
   leaderboard->title = malloc(strlen(title->valuestring) + 1);
-  memcpy(leaderboard->title, title->valuestring, strlen(title->valuestring) + 1);
+  strcpy(leaderboard->title, title->valuestring);
 
   leaderboard->description = malloc(strlen(description->valuestring) + 1);
-  memcpy(leaderboard->description, description->valuestring, strlen(description->valuestring) + 1);
+  strcpy(leaderboard->description, description->valuestring);
 
   leaderboard->lower_is_better = cJSON_IsTrue(lower_is_better);
  
@@ -653,8 +663,9 @@ struct ACHIEVEMENT_SET *parse_achievement_set_from_json(const cJSON *achievement
   cJSON_ArrayForEach(json_achievement, json_achievements)
   {
     struct ACHIEVEMENT *new_achievement = parse_achievement_from_json(json_achievement, status);
-    if (new_achievement == NULL)
+    if (!new_achievement)
     {
+      free_set(output);
       return NULL;
     }
 
@@ -671,6 +682,7 @@ struct ACHIEVEMENT_SET *parse_achievement_set_from_json(const cJSON *achievement
     struct LEADERBOARD *new_leaderboard = parse_leaderboard_from_json(json_leaderboard, status);
     if (new_leaderboard == NULL)
     {
+      free_set(output);
       return NULL;
     }
 
@@ -682,11 +694,13 @@ struct ACHIEVEMENT_SET *parse_achievement_set_from_json(const cJSON *achievement
     leaderboard_last = new_leaderboard;
   }
 
+  if (type) printf ("Type : %s\n", type->valuestring);
   if (strcmp(type->valuestring, "core") == 0) output->type = SET_CORE;
   else if (strcmp(type->valuestring, "bonus") == 0) output->type = SET_SUBSET;
   else
   {
     *status = UNKNOWN_SET_TYPE;
+    free_set(output);
     return NULL;
   }
 
@@ -754,13 +768,17 @@ struct GAME *parse_game_from_json(char *path)
   }
 
   int set_count = cJSON_GetArraySize(achievement_sets);
-  struct GAME *output = malloc(sizeof(struct GAME) + sizeof(struct ACHIEVEMENT_SET *) * set_count);
+  struct GAME *output = malloc(sizeof(struct GAME));
+  output->sets = calloc(set_count, sizeof(struct ACHIEVEMENT_SET));
 
   int index = 0;
   cJSON_ArrayForEach(achievement_set, achievement_sets)
   {
     output->sets[index] = parse_achievement_set_from_json(achievement_set, &status);
-    if (output->sets[index] == NULL) goto end;
+    if (output->sets[index] == NULL)
+    {
+      goto end;
+    }
     index ++;
   }
 
@@ -774,6 +792,10 @@ end:
 
   // TODO: something with status code for error diagnostic
   cJSON_Delete(json);
-  if (status != SUCCESS) {free(output); return NULL;}
+  if (status != SUCCESS)
+  {
+    free_game(output);
+    return NULL;
+  }
   return output;
 }

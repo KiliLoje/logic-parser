@@ -33,9 +33,9 @@ struct CONDITION *parse_condition(char condition[], size_t len);
 
 struct GROUP *parse_group(char group[], size_t len);
 
-struct ACHIEVEMENT_LOGIC *parse_achievement(char achievement[], size_t len);
+struct ACHIEVEMENT_LOGIC *parse_achievement_logic(char achievement[], size_t len);
 
-struct LEADERBOARD *parse_leaderboard(char leaderboard[], size_t len);
+struct LEADERBOARD *parse_leaderboard_logic(char leaderboard[], size_t len);
 
 // json parsing status:
 #define SUCCESS 0

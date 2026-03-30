@@ -169,12 +169,12 @@ struct LEADERBOARD *get_leaderboard_by_id(struct ACHIEVEMENT_SET *set, int lb_id
 
 struct ACHIEVEMENT_SET *get_core_set(struct GAME *game)
 {
-  if (!game) return NULL;
+  if (!game || !game->sets) return NULL;
 
-  struct ACHIEVEMENT_SET *set;
-  for_each_set(set, game)
+  for (int i = 0; i < game->set_count; i ++)
   {
-    if (set->type == SET_CORE) return set;
+    if (game->sets[i]->type == SET_CORE) return game->sets[i];
+    printf("Set type : %d\n", game->sets[i]->type);
   }
 
   return NULL;
@@ -314,10 +314,14 @@ struct ACHIEVEMENT *copy_achievements(struct ACHIEVEMENT *head, struct ACHIEVEME
     output_current->points = current->points;
     output_current->type = current->type;
 
-    strcpy(current->title, output_current->title);
-    strcpy(current->description, output_current->description);
+    output_current->title = malloc(strlen(current->title) + 1);
+    strcpy(output_current->title, current->title);
+
+    output_current->description = malloc(strlen(current->description) + 1);
+    strcpy(output_current->description, current->description);
 
     output_current->logic = copy_logic(current->logic);
+    if (!output_current) goto deallocate;
 
     output_current->next = NULL;
     output_current->prev = output_last;
@@ -448,7 +452,7 @@ void free_achievement_logic(struct ACHIEVEMENT_LOGIC *logic)
 {
   if (!logic) return;
 
-  struct GROUP *group;
+  struct GROUP *group = logic->group_head;
   while (group)
   {
     struct GROUP *tmp = group->next;
@@ -490,19 +494,19 @@ void free_set(struct ACHIEVEMENT_SET *set)
 {
   if (!set) return;
 
-  struct ACHIEVEMENT *achievement;
+  struct ACHIEVEMENT *achievement = set->achievement_head;
   while (achievement)
   {
     struct ACHIEVEMENT *tmp = achievement->next;
-    free(achievement);
+    free_achievement(achievement);
     achievement = tmp;
   }
 
-  struct LEADERBOARD *leaderboard;
+  struct LEADERBOARD *leaderboard = set->leaderboard_head;
   while (leaderboard)
   {
     struct LEADERBOARD *tmp = leaderboard->next;
-    free(leaderboard);
+    free_leaderboard(leaderboard);
     leaderboard = tmp;
   }
 
@@ -515,9 +519,9 @@ void free_game(struct GAME *game)
 
   free(game->title);
 
-  struct ACHIEVEMENT_SET *set;
-  for_each_set(set, game)
-    free_set(set);
+  if (game->sets)
+    for(int i = 0; i < game->set_count; i ++)
+      free_set(game->sets[i]);
 
   free(game->sets);
   free(game);

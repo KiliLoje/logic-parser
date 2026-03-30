@@ -35,14 +35,6 @@
     (leaderboard) = (leaderboard)->next \
   )
 
-#define for_each_set(set, game) \
-  for \
-  ( \
-    int i = 0; \
-    i < (game)->set_count && ((set) = (game)->sets[i], 1); \
-    i ++ \
-  )
-
 void append_conditions(struct CONDITION *condition_head, struct GROUP *group);
 void append_groups(struct GROUP *group_head, struct ACHIEVEMENT_LOGIC *logic);
 void append_achievements(struct ACHIEVEMENT *achievement_head, struct ACHIEVEMENT_SET *set);
@@ -59,6 +51,7 @@ struct ACHIEVEMENT_SET *get_core_set(struct GAME *game);
 
 struct CONDITION *copy_conditions(struct CONDITION *head, struct CONDITION *tail);
 struct GROUP *copy_groups(struct GROUP *head, struct GROUP *tail);
+struct ACHIEVEMENT_LOGIC *copy_logic(struct ACHIEVEMENT_LOGIC *logic);
 struct ACHIEVEMENT *copy_achievements(struct ACHIEVEMENT *head, struct ACHIEVEMENT *tail);
 struct LEADERBOARD *copy_leaderboards(struct LEADERBOARD *head, struct LEADERBOARD *tail);
 

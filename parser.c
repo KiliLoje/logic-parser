@@ -694,7 +694,6 @@ struct ACHIEVEMENT_SET *parse_achievement_set_from_json(const cJSON *achievement
     leaderboard_last = new_leaderboard;
   }
 
-  if (type) printf ("Type : %s\n", type->valuestring);
   if (strcmp(type->valuestring, "core") == 0) output->type = SET_CORE;
   else if (strcmp(type->valuestring, "bonus") == 0) output->type = SET_SUBSET;
   else
@@ -782,6 +781,7 @@ struct GAME *parse_game_from_json(char *path)
     index ++;
   }
 
+  output->set_count = set_count;
   output->id = gameID->valueint;
   output->consoleID = consoleID->valueint;
 

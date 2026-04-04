@@ -24,10 +24,10 @@ const char char_flag[] =
     'I',    // Add Address
     'N',    // And Next
     'O',    // Or Next
-    'M',   // Measured
-    'Q',   // Measured If
-    'T',   // Trigger
-    'K',   // Remember
+    'M',    // Measured
+    'Q',    // Measured If
+    'T',    // Trigger
+    'K',    // Remember
   };
 const char char_type[] =
   {
@@ -49,21 +49,21 @@ const char char_size[] =
     'T',    // Bit7
     'L',    // Lower4
     'U',    // Upper4
-    'H',   // 8-bit
-    ' ',   // 16-bit
-    'W',   // 24-bit
-    'X',   // 32-bit
-    'I',   // 16-bit BE
-    'J',   // 24-bit BE
-    'G',   // 32-bit BE
-    'K',   // BitCount
+    'H',    // 8-bit
+    ' ',    // 16-bit
+    'W',    // 24-bit
+    'X',    // 32-bit
+    'I',    // 16-bit BE
+    'J',    // 24-bit BE
+    'G',    // 32-bit BE
+    'K',    // BitCount
      // requires Float type
-    'F',   // Float
-    'B',   // Float BE
-    'H',   // Double32
-    'I',   // Double32 BE
-    'M',   // MBF32
-    'L'    // MBF32 BE
+    'F',    // Float
+    'B',    // Float BE
+    'H',    // Double32
+    'I',    // Double32 BE
+    'M',    // MBF32
+    'L'     // MBF32 BE
   };
 
 int is_recall(char *numeral, size_t len)

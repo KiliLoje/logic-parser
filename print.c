@@ -1042,19 +1042,18 @@ void print_condition(struct CONDITION *condition)
 
 static struct TEXT_BLOC *get_group_str(struct GROUP *group, struct PRINT_CONFIG *config)
 {
-  int group_count = 0;
+  int condition_count = 0;
   for (struct CONDITION *condition = group->condition_head; condition != NULL; condition = condition->next)
-    group_count ++;
+    condition_count ++;
 
   struct TEXT_BLOC *output = malloc(sizeof(struct TEXT_BLOC));
-  output->line_count = group_count + 3; // conditions + group header + logic header + bloc footer
+  output->line_count = condition_count + 3; // conditions + group header + logic header + bloc footer
   output->lines = malloc(sizeof(wchar_t *) * (output->line_count));
 
   wchar_t *group_title = get_group_title(group->id);
 
   int line_len = get_logic_line_length(config);
   output->lines[0] = get_header_line(group_title, line_len, config);
-  //free(group_title);
 
   wchar_t *logic_header = get_logic_header(false, config);
   if (!logic_header) {free(output->lines[0]); free(output->lines); free(output); return NULL;}
@@ -1077,11 +1076,70 @@ static struct TEXT_BLOC *get_group_str(struct GROUP *group, struct PRINT_CONFIG 
 
 deallocate:
   for (int i = 0; i < copied; i ++)
-    free(output->lines[copied]);
+    free(output->lines[i]);
 
   free(output->lines);
   free(output);
   return NULL;
+}
+
+static struct TEXT_BLOC *get_logic_str(struct ACHIEVEMENT_LOGIC *logic, struct PRINT_CONFIG *config)
+{
+  int group_count = 0;
+  for (struct GROUP *group = logic->group_head; group != NULL; group = group->next)
+    group_count ++;
+
+  int current_size = 0;
+  struct TEXT_BLOC *output = malloc(sizeof(struct TEXT_BLOC));
+  struct TEXT_BLOC *tmp = NULL;
+  output->lines = NULL;
+  for (struct GROUP *group = logic->group_head; group != NULL; group = group->next)
+  {
+    tmp = get_group_str(group, config);
+    if (!tmp) goto deallocate;
+
+    int current_index = current_size;
+
+    current_size += tmp->line_count + 1;
+    wchar_t **new_lines = realloc(output->lines, sizeof(wchar_t *) * current_size);
+    if (!new_lines) goto deallocate;
+    output->lines = new_lines;
+
+    for (int i = 0; i < tmp->line_count; i ++)
+    {
+      output->lines[current_index] = tmp->lines[i];
+      current_index ++;
+    }
+    free(tmp->lines);
+    free(tmp);
+
+    wchar_t *newline = malloc(2 * sizeof(wchar_t));
+    wcscpy(newline, L"");
+    output->lines[current_index] = newline;
+  }
+
+
+  output->line_count = current_size;
+  return output;
+
+deallocate:
+  if (tmp)
+  {
+    for (int i = 0; i < tmp->line_count; i ++)
+      free(tmp->lines[i]);
+    free (tmp->lines);
+    free(tmp);
+  }
+  for (int i = 0; i < current_size; i ++)
+    free(output->lines[i]);
+  free(output->lines);
+  free(output);
+  return NULL;
+}
+
+struct TEXT_BLOC get_achievement_str(struct ACHIEVEMENT *achievement, struct PRINT_CONFIG *config)
+{
+
 }
 
 void print_group(struct GROUP *group)
@@ -1089,5 +1147,23 @@ void print_group(struct GROUP *group)
   struct TEXT_BLOC *group_text = get_group_str(group, &global_config);
 
   for (int i = 0; i < group_text->line_count; i ++)
+  {
     wprintf(L"%ls\n", group_text->lines[i]);
+    free(group_text->lines[i]);
+  }
+  free(group_text->lines);
+  free(group_text);
+}
+
+void print_logic(struct ACHIEVEMENT_LOGIC *logic)
+{
+  struct TEXT_BLOC *logic_text = get_logic_str(logic, &global_config);
+
+  for (int i = 0; i < logic_text->line_count; i ++)
+  {
+    wprintf(L"%ls\n", logic_text->lines[i]);
+    free(logic_text->lines[i]);
+  }
+  free(logic_text->lines);
+  free(logic_text);
 }
